@@ -82,16 +82,23 @@ fn run() -> anyhow::Result<()> {
     let status = response.status();
 
     if cli.include {
-        eprintln!("HTTP/1.1 {status}");
+        eprintln!("{:?} {status}", response.version());
 
         for (name, value) in response.headers() {
-            eprintln!("{name}: {}", value.to_str()?);
+            let value: String = value
+                .as_bytes()
+                .iter()
+                .flat_map(|&byte| std::ascii::escape_default(byte))
+                .map(char::from)
+                .collect();
+
+            eprintln!("{name}: {value}");
         }
 
         eprintln!();
     }
 
-    if cli.fail && !status.is_success() {
+    if cli.fail && (status.is_client_error() || status.is_server_error()) {
         anyhow::bail!("HTTP request failed: {status}");
     }
 
